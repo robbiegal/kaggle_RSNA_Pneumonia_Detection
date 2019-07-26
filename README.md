@@ -3,6 +3,8 @@ https://www.kaggle.com/c/rsna-pneumonia-detection-challenge
 Detailed solution according to the original author:
 https://www.kaggle.com/c/rsna-pneumonia-detection-challenge/discussion/70427#latest-497399
 
+REQUIREMENTS to run the code correctly:
+
 required folder structure for the project to work:
 
     $(curr_dir)
@@ -16,8 +18,6 @@ required folder structure for the project to work:
       |__detailed_class_invo.csv
       |__trainn_labels.csv
     |__pytorch_retinanet
-
-REQUIREMENTS to run the code correctly:
 
 Code runs in on a GCP ubuntu instance.
 
