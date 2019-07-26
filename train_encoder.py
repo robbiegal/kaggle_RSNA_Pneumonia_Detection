@@ -130,7 +130,7 @@ def train(model_name, fold, run=None, resume_weights='', resume_epoch=0):
     run_str = '' if run is None or run == '' else f'_{run}'
 
     checkpoints_dir = f'checkpoints/pretrained/{model_name}{run_str}_fold_{fold}'
-    tensorboard_dir = f'../output/tensorboard_pretrained/{model_name}{run_str}_fold_{fold}'
+    tensorboard_dir = f'output/tensorboard_pretrained/{model_name}{run_str}_fold_{fold}'
     os.makedirs(checkpoints_dir, exist_ok=True)
     os.makedirs(tensorboard_dir, exist_ok=True)
     print('\n', model_name, '\n')

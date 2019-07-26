@@ -16,21 +16,23 @@ from train import MODELS, p1p2_to_xywh
 
 def prepare_submission(model_name, run, fold, epoch_num, threshold, submission_name):
     run_str = '' if run is None or run == '' else f'_{run}'
-    predictions_dir = f'../output/oof2/{model_name}{run_str}_fold_{fold}'
+    predictions_dir = f'output/oof2/{model_name}{run_str}_fold_{fold}'
     os.makedirs(predictions_dir, exist_ok=True)
 
     model_info = MODELS[model_name]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+	
+	
 
-    checkpoint = f'checkpoints/{model_name}{run_str}_fold_{fold}/{model_name}_{epoch_num:03}.pt'
-    model = torch.load(checkpoint, map_location=device)
+    checkpoint = f'checkpoints/{model_name}{run_str}_fold_{fold}/{model_name}_{epoch_num[0]:03}.pt'
+    model = torch.load(checkpoint)#, map_location=device)
     model = model.to(device)
     model.eval()
 
-    sample_submission = pd.read_csv('../input/stage_1_sample_submission.csv')
+    sample_submission = pd.read_csv('data/sample_submission.csv')
 
     img_size = model_info.img_size
-    submission = open(f'../submissions/{submission_name}.csv', 'w')
+    submission = open(f'submissions/{submission_name}.csv', 'w')
     submission.write('patientId,PredictionString\n')
 
     for patient_id in sample_submission.patientId:
@@ -89,7 +91,7 @@ def prepare_submission_multifolds(model_name, run, epoch_nums, threshold, submis
 
     model_info = MODELS[model_name]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    predictions_dir = f'../output/oof2/{model_name}{run_str}_fold_combined'
+    predictions_dir = f'output/oof2/{model_name}{run_str}_fold_combined'
     os.makedirs(predictions_dir, exist_ok=True)
 
     for epoch_num in epoch_nums:
@@ -101,10 +103,10 @@ def prepare_submission_multifolds(model_name, run, epoch_nums, threshold, submis
             model.eval()
             models.append(model)
 
-    sample_submission = pd.read_csv('../input/stage_1_sample_submission.csv')
+    sample_submission = pd.read_csv('data/sample_submission.csv')
 
     img_size = model_info.img_size
-    submission = open(f'../submissions/{submission_name}.csv', 'w')
+    submission = open(f'submissions/{submission_name}.csv', 'w')
     submission.write('patientId,PredictionString\n')
 
     for patient_id in sample_submission.patientId:
@@ -180,10 +182,10 @@ def prepare_test_predictions(model_name, run, epoch_num):
 
     for fold in range(4):
         print('fold', fold)
-        output_dir = f'{config.TEST_PREDICTIONS_DIR}/{model_name}{run_str}_fold_{fold}/{epoch_num:03}/'
+        output_dir = f'{config.TEST_PREDICTIONS_DIR}/{model_name}{run_str}_fold_{fold}/{epoch_num[0]:03}/'
         os.makedirs(output_dir, exist_ok=True)
 
-        checkpoint = f'checkpoints/{model_name}{run_str}_fold_{fold}/{model_name}_{epoch_num:03}.pt'
+        checkpoint = f'checkpoints/{model_name}{run_str}_fold_{fold}/{model_name}_{epoch_num[0]:03}.pt'
         print('load', checkpoint)
         model = torch.load(checkpoint, map_location=device)
         model = model.to(device)
@@ -232,7 +234,7 @@ def prepare_submission_from_saved(model_name, run, epoch_nums, threshold, submis
     sample_submission = pd.read_csv(config.SAMPLE_SUBMISSION_FILE)
 
     img_size = model_info.img_size
-    submission = open(f'../submissions/{submission_name}.csv', 'w')
+    submission = open(f'submissions/{submission_name}.csv', 'w')
     submission.write('patientId,PredictionString\n')
 
     anchors = model.anchors(img_tensor)
@@ -333,7 +335,7 @@ def check_submission_stat(sub_name):
 
     nb_non_empy = 0
 
-    for line in open(f'../submissions/{sub_name}.csv', 'r'):
+    for line in open(f'submissions/{sub_name}.csv', 'r'):
         if line.startswith('patientId'):
             continue
 

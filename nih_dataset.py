@@ -33,7 +33,7 @@ class NihDataset(Dataset):
                            'Hernia', 'Infiltration', 'Mass', 'No Finding', 'Nodule', 'Pleural_Thickening', 'Pneumonia',
                            'Pneumothorax']
 
-        samples = pd.read_csv('../input/nih_folds.csv')
+        samples = pd.read_csv('data/nih_folds.csv')
 
         self.images = {}
 
@@ -57,7 +57,7 @@ class NihDataset(Dataset):
         if patient_id in self.images:
             return self.images[patient_id]
         else:
-            img = np.array(Image.open('../data/nih/images/' + patient_id))
+            img = np.array(Image.open('data/nih/images/' + patient_id))
             if len(img.shape) > 2:
                 img = img[:, :, 0]
             # print(img.shape)

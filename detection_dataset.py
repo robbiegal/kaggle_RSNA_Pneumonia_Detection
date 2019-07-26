@@ -30,8 +30,8 @@ class DetectionDataset(Dataset):
         self.augmentation_level = augmentation_level
         self.categories = ['No Lung Opacity / Not Normal', 'Normal', 'Lung Opacity']
 
-        samples = pd.read_csv('../input/stage_1_train_labels.csv')
-        samples = samples.merge(pd.read_csv('../input/folds.csv'), on='patientId', how='left')
+        samples = pd.read_csv('./data/train_labels.csv')
+        samples = samples.merge(pd.read_csv('./data/folds.csv'), on='patientId', how='left')
 
         if images is None:
             self.images = self.load_images(samples)
@@ -66,8 +66,10 @@ class DetectionDataset(Dataset):
 
     def load_images(self, samples):
         try:
-            images = pickle.load(open(f'{CACHE_DIR}/train_images.pkl', 'rb'))
+            images = pickle.load(open(f'mnt/data_fast/pneumonia/train_images.pkl', 'rb'))
+            
         except FileNotFoundError:
+
             os.makedirs(CACHE_DIR, exist_ok=True)
             images = {}
             for patient_id in tqdm(list(sorted(samples.patientId.unique()))):
@@ -77,16 +79,16 @@ class DetectionDataset(Dataset):
                 # img = skimage.transform.resize(img, (img.shape[0] / 2, img.shape[1] / 2), anti_aliasing=True)
                 # img = np.clip(img*255, 0, 255).astype(np.uint8)
                 images[patient_id] = img
-            pickle.dump(images, open(f'{CACHE_DIR}/train_images.pkl', 'wb'))
+            pickle.dump(images, open('mnt/data_fast/pneumonia/train_images.pkl', 'wb'))
         return images
 
     def load_image(self, patient_id):
         if patient_id in self.images:
             return self.images[patient_id]
         else:
-            dcm_data = pydicom.read_file(f'{TRAIN_DIR}/{patient_id}.dcm')
+            dcm_data = pydicom.read_file('./data/train_dicoms/%s.dcm'%patient_id)
             img = dcm_data.pixel_array
-            self.images[patient_id] = img
+            #self.images[patient_id] = img
             return img
 
     def num_classes(self):
@@ -96,6 +98,7 @@ class DetectionDataset(Dataset):
         return len(self.patient_ids)
 
     def __getitem__(self, idx):
+
         patient_id = self.patient_ids[idx]
 
         img = self.load_image(patient_id)

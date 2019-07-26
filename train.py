@@ -56,21 +56,21 @@ MODELS = {
         factory=pytorch_retinanet.model_resnet.resnet34,
         args=dict(num_classes=1, pretrained=True),
         img_size=512,
-        batch_size=8,
+        batch_size=10, #change this from 8 to 10 for optimal run  
         dataset_args=dict()
     ),
     'resnet34_1024': ModelInfo(
         factory=pytorch_retinanet.model_resnet.resnet34,
         args=dict(num_classes=1, pretrained=True),
         img_size=1024,
-        batch_size=4,
+        batch_size=2, #changed from orignal 4
         dataset_args=dict()
     ),
     'resnet101_512': ModelInfo(
         factory=pytorch_retinanet.model_resnet.resnet101,
         args=dict(num_classes=1, pretrained=True),
         img_size=512,
-        batch_size=6,
+        batch_size=4, #changed this from 6 orignally
         dataset_args=dict(augmentation_level=20)
     ),
     'resnet152_512': ModelInfo(
@@ -286,8 +286,8 @@ def train(model_name, fold, run=None, resume_weights='', resume_epoch=0):
     run_str = '' if run is None or run == '' else f'_{run}'
 
     checkpoints_dir = f'checkpoints/{model_name}{run_str}_fold_{fold}'
-    tensorboard_dir = f'../output/tensorboard/{model_name}{run_str}_fold_{fold}'
-    predictions_dir = f'../output/oof/{model_name}{run_str}_fold_{fold}'
+    tensorboard_dir = f'output/tensorboard/{model_name}{run_str}_fold_{fold}'
+    predictions_dir = f'output/oof/{model_name}{run_str}_fold_{fold}'
     os.makedirs(checkpoints_dir, exist_ok=True)
     os.makedirs(tensorboard_dir, exist_ok=True)
     os.makedirs(predictions_dir, exist_ok=True)
@@ -309,7 +309,7 @@ def train(model_name, fold, run=None, resume_weights='', resume_epoch=0):
     dataset_valid = DetectionDataset(fold=fold, img_size=model_info.img_size, is_training=False, images={})
 
     dataloader_train = DataLoader(dataset_train,
-                                  num_workers=16,
+                                  num_workers=8,
                                   batch_size=model_info.batch_size,
                                   shuffle=True,
                                   drop_last=True,
@@ -364,7 +364,7 @@ def train(model_name, fold, run=None, resume_weights='', resume_epoch=0):
             retinanet.module.unfreeze_encoder()
 
         retinanet.module.freeze_bn()
-
+        
         epoch_loss = []
         loss_cls_hist = []
         loss_cls_global_hist = []
@@ -395,23 +395,25 @@ def train(model_name, fold, run=None, resume_weights='', resume_epoch=0):
 
                 optimizer.step()
 
-                loss_cls_hist.append(float(classification_loss))
-                loss_cls_global_hist.append(float(global_classification_loss))
-                loss_reg_hist.append(float(regression_loss))
-                epoch_loss.append(float(loss))
-
+                loss_cls_hist.append(float(classification_loss.detach()))
+                loss_cls_global_hist.append(float(global_classification_loss.detach()))
+                loss_reg_hist.append(float(regression_loss.detach()))
+                epoch_loss.append(float(loss.detach()))
+		
                 data_iter.set_description(
                     f'{epoch_num} cls: {np.mean(loss_cls_hist):1.4f} cls g: {np.mean(loss_cls_global_hist):1.4f} Reg: {np.mean(loss_reg_hist):1.4f} Loss: {np.mean(epoch_loss):1.4f}')
-
+               		
                 del classification_loss
                 del regression_loss
-
+                #del loss
+                #del global_classification_loss
+                torch.cuda.empty_cache()       
         torch.save(retinanet.module, f'{checkpoints_dir}/{model_name}_{epoch_num:03}.pt')
-
-        logger.scalar_summary('loss_train', np.mean(epoch_loss), epoch_num)
-        logger.scalar_summary('loss_train_classification', np.mean(loss_cls_hist), epoch_num)
-        logger.scalar_summary('loss_train_global_classification', np.mean(loss_cls_global_hist), epoch_num)
-        logger.scalar_summary('loss_train_regression', np.mean(loss_reg_hist), epoch_num)
+#removed the lines below logging now is disabled
+        #logger.scalar_summary('loss_train', np.mean(epoch_loss), epoch_num)
+        #logger.scalar_summary('loss_train_classification', np.mean(loss_cls_hist), epoch_num)
+        #logger.scalar_summary('loss_train_global_classification', np.mean(loss_cls_global_hist), epoch_num)
+        #logger.scalar_summary('loss_train_regression', np.mean(loss_reg_hist), epoch_num)
 
         # validation
         with torch.no_grad():
@@ -443,10 +445,10 @@ def train(model_name, fold, run=None, resume_weights='', resume_epoch=0):
                 global_classification_loss = global_classification_loss.mean()
                 loss = classification_loss + regression_loss + global_classification_loss * 0.1
 
-                loss_hist_valid.append(float(loss))
-                loss_cls_hist_valid.append(float(classification_loss))
-                loss_cls_global_hist_valid.append(float(global_classification_loss))
-                loss_reg_hist_valid.append(float(regression_loss))
+                loss_hist_valid.append(float(loss.detach()))
+                loss_cls_hist_valid.append(float(classification_loss.detach()))
+                loss_cls_global_hist_valid.append(float(global_classification_loss.detach()))
+                loss_reg_hist_valid.append(float(regression_loss.detach()))
 
                 data_iter.set_description(
                     f'{epoch_num} cls: {np.mean(loss_cls_hist_valid):1.4f} cls g: {np.mean(loss_cls_global_hist_valid):1.4f} Reg: {np.mean(loss_reg_hist_valid):1.4f} Loss {np.mean(loss_hist_valid):1.4f}')
@@ -492,7 +494,7 @@ def check(model_name, fold, checkpoint):
                                      images={})
 
     dataloader_valid = DataLoader(dataset_valid,
-                                  num_workers=1,
+                                  num_workers=8,
                                   batch_size=1,
                                   shuffle=False,
                                   collate_fn=pytorch_retinanet.dataloader.collater2d)
@@ -547,7 +549,7 @@ def check(model_name, fold, checkpoint):
 
 def generate_predictions(model_name, run, fold, from_epoch=0, to_epoch=100):
     run_str = '' if run is None or run == '' else f'_{run}'
-    predictions_dir = f'../output/oof2/{model_name}{run_str}_fold_{fold}'
+    predictions_dir = f'output/oof2/{model_name}{run_str}_fold_{fold}'
     os.makedirs(predictions_dir, exist_ok=True)
 
     model_info = MODELS[model_name]
@@ -571,7 +573,7 @@ def generate_predictions(model_name, run, fold, from_epoch=0, to_epoch=100):
                                          images={})
 
         dataloader_valid = DataLoader(dataset_valid,
-                                      num_workers=2,
+                                      num_workers=8,
                                       batch_size=1,
                                       shuffle=False,
                                       collate_fn=pytorch_retinanet.dataloader.collater2d)
@@ -609,7 +611,7 @@ def p1p2_to_xywh(p1p2):
 
 def check_metric(model_name, run, fold):
     run_str = '' if run is None or run == '' else f'_{run}'
-    predictions_dir = f'../output/oof2/{model_name}{run_str}_fold_{fold}'
+    predictions_dir = f'output/oof2/{model_name}{run_str}_fold_{fold}'
     thresholds = [0.05, 0.075, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.4, 1.6, 2.0, 3.0, 4.0]
 
     all_scores = []
